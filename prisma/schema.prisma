@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id             String             @id @default(uuid())
+  name           String
+  email          String             @unique
+  avatar         String?
+  role           String             // e.g. Freelance Designer, Professional Designer, etc.
+  designTypes    String             // Comma-separated list of what they mainly design, e.g. Saree, Kurti, etc.
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  subscription   Subscription?
+  creditWallet   CreditWallet?
+  transactions   CreditTransaction[]
+  projects       Project[]
+  motifs         Motif[]
+  colorPalettes  ColorPalette[]
+  exports        Export[]
+}
+
+model Subscription {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                   String    // DESIGNER, PROFESSIONAL, STUDIO
+  status                 String    // ACTIVE, INACTIVE, CANCELLED
+  billingCycle           String    // MONTHLY, ANNUAL
+  provider               String    // STRIPE, RAZORPAY, MOCK
+  providerSubscriptionId String?
+  currentPeriodEnd       DateTime
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+model CreditWallet {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monthlyCredits   Int      @default(0)
+  purchasedCredits Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model CreditTransaction {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount     Int
+  type       String   // DEDUCTION, ADDITION
+  reason     String   // e.g., Basic cleanup, AI restoration, Purchase Pack
+  projectId  String?
+  createdAt  DateTime @default(now())
+}
+
+model Project {
+  id               String             @id @default(uuid())
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  productType      String             // Saree, Dress Material, Kurti, Dupatta, Lehenga, Blouse, Custom Textile
+  status           String             // Draft, In Progress, Ready for Export, Completed
+  originalImageUrl String?
+  thumbnailUrl     String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  versions         ProjectVersion[]
+  layers           Layer[]
+  screenSeparations ScreenSeparation[]
+  exports          Export[]
+  motifs           Motif[]
+}
+
+model ProjectVersion {
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  canvasState   String   // JSON string of canvas items
+  previewUrl    String?
+  createdAt     DateTime @default(now())
+}
+
+model Layer {
+  id         String   @id @default(uuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name       String
+  type       String   // background, texture, motif, artwork, shadow, highlight, separation
+  order      Int      // z-index ordering
+  imageUrl   String?
+  visible    Boolean  @default(true)
+  locked     Boolean  @default(false)
+  opacity    Float    @default(1.0)
+  metadata   String?  // JSON string for scale, rotation, offset, tolerance, density
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Motif {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id])
+  name       String
+  imageUrl   String
+  category   String   // My Motifs, Flowers, Paisleys, Leaves, Borders, Traditional, Modern, Saved from Projects
+  tags       String   // Comma-separated tags
+  createdAt  DateTime @default(now())
+}
+
+model ColorPalette {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  colors    String   // Comma-separated hex list (e.g. "#FFFFFF,#FF0000")
+  createdAt DateTime @default(now())
+}
+
+model ScreenSeparation {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  colorName String
+  hex       String
+  order     Int
+  maskUrl   String?
+  metadata  String?  // JSON string for density, tolerance, active filters
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Export {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String   // PREVIEW_PNG, PREVIEW_JPG, ARTWORK_PNG, ARTWORK_TIFF, SEPARATIONS_ZIP, PRODUCTION_PACKAGE
+  status      String   // COMPLETED, FAILED, PENDING
+  downloadUrl String?
+  createdAt   DateTime @default(now())
+}
